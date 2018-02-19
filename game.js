@@ -4,8 +4,7 @@ phina.globalize();
 // 何かで使う定数値(バランス調整でいじっていい値)
 const PLAYER_POSITION_Y = 550;  //自機の縦位置
 const PLAYER_DEFAULT_SPEED = 2; //自機の移動スピード
-const BULLET_DEFAULT_SPEED = 5; //自機が発射する弾のスピード
-
+const BULLET_DEFAULT_SPEED = 10; //自機が発射する弾のスピード
 // MainScene クラスを定義
 phina.define('MainScene', {
     superClass: 'DisplayScene',
@@ -13,6 +12,12 @@ phina.define('MainScene', {
         this.superInit(option);
         // 背景色を指定
         this.backgroundColor = 'black';
+
+        const scorelabel = Label({
+            text: 'Score: 0',
+            fontSize: 22,
+            fill: 'white'
+        }).addChildTo(this).setPosition(700, 25);
 
         // 自機を生成
         this.player = Player({
@@ -23,15 +28,17 @@ phina.define('MainScene', {
             bulletSpeed: BULLET_DEFAULT_SPEED
         }).addChildTo(this);
 
+
         // 敵のグループ作成
         const enemies = EnemyGroup({
             x: 35,
-            y: 35,
+            y: 50,
             offsetX: 80,
             offsetY: 50,
             lengthX: 8,
             lengthY: 5,
-            player: this.player
+            player: this.player,
+            scorelabel: scorelabel,
         }).addChildTo(this);
     }
 });
@@ -123,14 +130,15 @@ phina.define('Bullet', {
 
 // 敵クラスを作る
 phina.define('Enemy', {
-    superClass: 'Sprite',
+        superClass: 'Sprite',
 
-    init: function (option) {
-        this.superInit(option.image);
-        this.x = option.x;
-        this.y = option.y;
+        init: function (option) {
+            this.superInit(option.image);
+            this.x = option.x;
+            this.y = option.y;
+        }
     }
-});
+);
 
 // 敵グループクラスを作る
 phina.define('EnemyGroup', {
@@ -140,7 +148,16 @@ phina.define('EnemyGroup', {
         this.superInit();
         this.x = option.x;
         this.y = option.y;
+        this.lengthY = option.lengthY;
+        this.lengthX = option.lengthX;
+        this.offsetX = option.offsetX;
+        this.offsetY = option.offsetY;
         this.player = option.player;
+        this.resetx = option.x;
+        this.hoge = true;
+        this.enemycount = this.lengthY * this.lengthX;
+        this.SCORE = 0;
+        this.scorelabel = option.scorelabel;
 
         const thisGroup = this;
         Array.range(0, option.lengthY).each(function (iy) {
@@ -152,11 +169,17 @@ phina.define('EnemyGroup', {
                 }).addChildTo(thisGroup);
             });
         });
+
     },
 
     update: function (app) {
+        thisGroup = this;
         // 当たり判定
-        const thisGroup = this;
+
+
+        if (app.frame % 30=== 0) {
+            this.move();
+        }
         if (this.player.bullet != null) {
             // 弾のコピーを作ってから座標を変換する。
             let bullet = Bullet(this.player.bullet);
@@ -170,8 +193,83 @@ phina.define('EnemyGroup', {
                     thisGroup.player.bullet.flare('hit');
                     bullet = null;
                     enemy.remove();
+                    thisGroup.SCORE += 1;
+                    console.log(thisGroup.SCORE);
+                    thisGroup.scorelabel.text = 'Score ' + thisGroup.SCORE;
+                    thisGroup.enemycount -= 1;
+                    if(thisGroup.enemycount === 0) {
+                        thisGroup.enemycount += thisGroup.lengthX * thisGroup.lengthY;
+                        Array.range(0, thisGroup.lengthY).each(function (iy) {
+                            Array.range(0, thisGroup.lengthX).each(function (ix) {
+                                const enemy = Enemy({
+                                    image: 'enemy1',
+                                    x: ix * thisGroup.offsetX,
+                                    y: (thisGroup.lengthY - iy - 1) * thisGroup.offsetY
+                                }).addChildTo(thisGroup);
+                                thisGroup.x = thisGroup.resetx;
+                            });
+                        });
+                    }
                 }
             });
+        }
+    },
+    enemybody: function () {
+      const thisGroup = this;
+      let left = 999;
+      let right = 0;
+      let bottom  = 0;
+
+      this.children.forEach(function (enemy) {
+            if (enemy.right + thisGroup.right - 20 > right) {
+                right = enemy.right + thisGroup.right -20;
+            }
+            if (enemy.left + thisGroup.left + 20 < left) {
+                left = enemy.left + thisGroup.left + 20;
+            }
+            if (enemy.bottom + thisGroup.bottom > bottom) {
+                bottom = enemy.bottom + thisGroup.bottom;
+            }
+      });
+        return {left: left, right: right, bottom: bottom};
+    },
+
+
+    move: function () {
+        let Enemybody = this.enemybody();
+        console.log(Enemybody);
+        if (Enemybody.bottom > 550) {
+            Label({
+                text: 'Game Over',
+                fontSize: 64,
+                fill: 'red',
+            }).addChildTo(this.parent).setPosition(this.parent.gridX.center(), this.parent.gridY.center());
+
+            /*
+            Label({
+                text: 'Game Over',
+                fontSize: 64,
+                fill: 'red',
+            }).addChildTo(this).setPosition(this.gridX.center(), this.gridY.center());
+            */
+            this.remove();
+
+        }else {
+
+            if (this.hoge === true) {
+                this.x += 5;
+                if (Enemybody.right > 800) {
+                    this.y += 50;
+                    this.hoge = false;
+                }
+            }else {
+                this.x -= 5;
+                if (Enemybody.left < 0) {
+                    Enemybody.left += (0 - Enemybody.left);
+                    this.y += 50;
+                    this.hoge = true;
+                }
+            }
         }
     }
 });
@@ -183,7 +281,6 @@ const ASSETS = {
         enemy1: './image/enemy.png'
     }
 };
-
 // メイン処理
 phina.main(function () {
     const app = GameApp({

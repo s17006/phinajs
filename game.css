@@ -3,6 +3,18 @@ body {
     padding: 0;
     background: #005;
 }
+canvas{
+    display: block;
+    margin-right: auto;
+    margin-left:auto;
+}
+section#display{
+    width: 800px;
+    height: 1.5em;
+    margin-right: auto;
+    margin-left: auto;
+    text-align: right;
+}
 
 canvas#display {
     width: 800px;
@@ -10,4 +22,11 @@ canvas#display {
     background-color: white;
     margin: 2em auto;
     display: block;
+}
+div#score{
+    display: inline-block;
+    background-color: black;
+    color: white;
+    font-weight: bold;
+    min-width: 10em;
 }
